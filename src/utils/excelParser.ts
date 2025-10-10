@@ -39,27 +39,27 @@ export const parseExcelFile = async (file: File): Promise<ProcessedData> => {
             parsedDate = new Date(dateValue);
           }
 
-          // Parse value - handle both string and number formats
+          // Parse value - handle Excel format (comma as thousands separator, dot as decimal)
           let valor = 0;
           const valorStr = String(row['VALOR'] || row['valor'] || '0');
           
-          // Remove currency symbols and convert comma to dot
+          // Remove currency symbols, spaces, and commas (thousands separator)
+          // Excel exports with comma as thousands separator and dot as decimal
           const cleanValue = valorStr
             .replace(/[R$\s]/g, '')
-            .replace(',', '.');
+            .replace(/,/g, ''); // Remove commas (thousands separator)
           
           valor = parseFloat(cleanValue) || 0;
 
-          // Determine transaction type and adjust value
+          // Determine transaction type
           const tipo = (row['Tipo'] || row['tipo'] || 'c').toLowerCase() as 'c' | 'd';
           
-          // If it's a debit and value is positive, make it negative
-          if (tipo === 'd' && valor > 0) {
-            valor = -valor;
-          }
-          // If it's a credit and value is negative, make it positive
-          if (tipo === 'c' && valor < 0) {
-            valor = -valor;
+          // Ensure correct sign: credits positive, debits negative
+          const absoluteValue = Math.abs(valor);
+          if (tipo === 'd') {
+            valor = -absoluteValue; // Debits are always negative
+          } else {
+            valor = absoluteValue; // Credits are always positive
           }
 
           return {
