@@ -28,7 +28,7 @@ export const TopExpensesChart = ({ data }: TopExpensesChartProps) => {
         <BarChart 
           data={topData} 
           layout="vertical"
-          margin={{ left: 120 }}
+          margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis 
@@ -41,8 +41,9 @@ export const TopExpensesChart = ({ data }: TopExpensesChartProps) => {
             type="category"
             dataKey="name" 
             stroke="hsl(var(--muted-foreground))"
-            fontSize={11}
-            width={110}
+            fontSize={10}
+            width={150}
+            tick={{ textAnchor: 'end' }}
           />
           <Tooltip content={<CustomTooltip />} />
           <Bar 

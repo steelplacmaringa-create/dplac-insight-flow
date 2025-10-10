@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FileUpload } from '@/components/FileUpload';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { KPICard } from '@/components/KPICard';
@@ -9,6 +9,9 @@ import { YearComparisonChart } from '@/components/charts/YearComparisonChart';
 import { CashFlowChart } from '@/components/charts/CashFlowChart';
 import { TopExpensesChart } from '@/components/charts/TopExpensesChart';
 import { AIInsights } from '@/components/AIInsights';
+import { DREAnalysis } from '@/components/DREAnalysis';
+import { RankingMonths } from '@/components/RankingMonths';
+import { MonthlyReport } from '@/components/MonthlyReport';
 import { parseExcelFile } from '@/utils/excelParser';
 import { filterTransactions, calculateKPIs, groupByCategory, compareYears, getTopExpenses } from '@/utils/dataProcessing';
 import { ProcessedData, FilterState } from '@/types/financial';
@@ -100,6 +103,12 @@ const Index = () => {
               <CashFlowChart kpiData={kpiData} />
               <TopExpensesChart data={topExpenses} />
             </div>
+
+            <DREAnalysis transactions={filteredTransactions} />
+
+            <RankingMonths transactions={filteredTransactions} />
+
+            <MonthlyReport transactions={filteredTransactions} />
           </div>
         )}
       </main>

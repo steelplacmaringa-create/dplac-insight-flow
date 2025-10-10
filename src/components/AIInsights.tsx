@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, AlertTriangle, TrendingUp, Info, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { KPIData } from '@/types/financial';
@@ -13,12 +13,13 @@ interface AIInsightsProps {
 export const AIInsights = ({ kpiData }: AIInsightsProps) => {
   const [insights, setInsights] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const generateInsights = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('financial-ai', {
-        body: { kpiData }
+        body: { kpiData, requestType: 'summary' }
       });
 
       if (error) throw error;
@@ -39,19 +40,34 @@ export const AIInsights = ({ kpiData }: AIInsightsProps) => {
           <Sparkles className="w-5 h-5 text-primary" />
           Insights Financeiros com IA
         </h3>
-        <Button onClick={generateInsights} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Gerar Insights'}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={generateInsights} disabled={loading} size="sm">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Gerar Insights'}
+          </Button>
+          {insights && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          )}
+        </div>
       </div>
       
-      {insights ? (
-        <div className="prose prose-sm max-w-none">
-          <p className="whitespace-pre-wrap">{insights}</p>
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">
-          Clique em "Gerar Insights" para uma análise detalhada dos seus dados financeiros.
-        </p>
+      {isExpanded && (
+        <>
+          {insights ? (
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap text-sm">{insights}</p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Clique em "Gerar Insights" para uma análise resumida dos seus dados financeiros.
+            </p>
+          )}
+        </>
       )}
     </Card>
   );

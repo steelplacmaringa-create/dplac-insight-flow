@@ -18,45 +18,65 @@ interface FilterPanelProps {
 
 export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState<FilterState>(filters);
 
   const handleEmpresaToggle = (empresa: string) => {
-    const newEmpresas = filters.empresas.includes(empresa)
-      ? filters.empresas.filter(e => e !== empresa)
-      : [...filters.empresas, empresa];
-    onFilterChange({ ...filters, empresas: newEmpresas });
+    const newEmpresas = tempFilters.empresas.includes(empresa)
+      ? tempFilters.empresas.filter(e => e !== empresa)
+      : [...tempFilters.empresas, empresa];
+    setTempFilters({ ...tempFilters, empresas: newEmpresas });
+  };
+
+  const handleSelectAllEmpresas = () => {
+    setTempFilters({ ...tempFilters, empresas: data.empresas });
   };
 
   const handleGrupoToggle = (grupo: string) => {
-    const newGrupos = filters.grupos.includes(grupo)
-      ? filters.grupos.filter(g => g !== grupo)
-      : [...filters.grupos, grupo];
-    onFilterChange({ ...filters, grupos: newGrupos });
+    const newGrupos = tempFilters.grupos.includes(grupo)
+      ? tempFilters.grupos.filter(g => g !== grupo)
+      : [...tempFilters.grupos, grupo];
+    setTempFilters({ ...tempFilters, grupos: newGrupos });
+  };
+
+  const handleSelectAllGrupos = () => {
+    setTempFilters({ ...tempFilters, grupos: data.grupos });
   };
 
   const handleSubgrupoToggle = (subgrupo: string) => {
-    const newSubgrupos = filters.subgrupos.includes(subgrupo)
-      ? filters.subgrupos.filter(s => s !== subgrupo)
-      : [...filters.subgrupos, subgrupo];
-    onFilterChange({ ...filters, subgrupos: newSubgrupos });
+    const newSubgrupos = tempFilters.subgrupos.includes(subgrupo)
+      ? tempFilters.subgrupos.filter(s => s !== subgrupo)
+      : [...tempFilters.subgrupos, subgrupo];
+    setTempFilters({ ...tempFilters, subgrupos: newSubgrupos });
+  };
+
+  const handleSelectAllSubgrupos = () => {
+    setTempFilters({ ...tempFilters, subgrupos: data.subgrupos });
   };
 
   const handleTipoToggle = (tipo: 'c' | 'd') => {
-    const currentTipo = filters.tipo || [];
+    const currentTipo = tempFilters.tipo || [];
     const newTipo = currentTipo.includes(tipo)
       ? currentTipo.filter(t => t !== tipo)
       : [...currentTipo, tipo];
-    onFilterChange({ ...filters, tipo: newTipo.length > 0 ? newTipo as ('c' | 'd')[] : null });
+    setTempFilters({ ...tempFilters, tipo: newTipo.length > 0 ? newTipo as ('c' | 'd')[] : null });
+  };
+
+  const handleApply = () => {
+    onFilterChange(tempFilters);
+    setIsOpen(false);
   };
 
   const handleReset = () => {
-    onFilterChange({
+    const resetFilters = {
       empresas: [],
       grupos: [],
       subgrupos: [],
       tipo: null,
       startDate: null,
       endDate: null,
-    });
+    };
+    setTempFilters(resetFilters);
+    onFilterChange(resetFilters);
   };
 
   const hasActiveFilters = 
@@ -71,7 +91,10 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
     <div className="relative">
       <Button
         variant={hasActiveFilters ? "default" : "outline"}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setTempFilters(filters);
+          setIsOpen(!isOpen);
+        }}
         className="gap-2"
       >
         <Filter className="w-4 h-4" />
@@ -112,7 +135,7 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="tipo-receita"
-                    checked={filters.tipo?.includes('c')}
+                    checked={tempFilters.tipo?.includes('c')}
                     onCheckedChange={() => handleTipoToggle('c')}
                   />
                   <label htmlFor="tipo-receita" className="text-sm cursor-pointer">
@@ -122,7 +145,7 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="tipo-despesa"
-                    checked={filters.tipo?.includes('d')}
+                    checked={tempFilters.tipo?.includes('d')}
                     onCheckedChange={() => handleTipoToggle('d')}
                   />
                   <label htmlFor="tipo-despesa" className="text-sm cursor-pointer">
@@ -140,14 +163,14 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="w-4 h-4 mr-2" />
-                      {filters.startDate ? format(filters.startDate, 'P', { locale: ptBR }) : 'Início'}
+                      {tempFilters.startDate ? format(tempFilters.startDate, 'P', { locale: ptBR }) : 'Início'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={filters.startDate || undefined}
-                      onSelect={(date) => onFilterChange({ ...filters, startDate: date || null })}
+                      selected={tempFilters.startDate || undefined}
+                      onSelect={(date) => setTempFilters({ ...tempFilters, startDate: date || null })}
                       locale={ptBR}
                     />
                   </PopoverContent>
@@ -157,14 +180,14 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="w-4 h-4 mr-2" />
-                      {filters.endDate ? format(filters.endDate, 'P', { locale: ptBR }) : 'Fim'}
+                      {tempFilters.endDate ? format(tempFilters.endDate, 'P', { locale: ptBR }) : 'Fim'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={filters.endDate || undefined}
-                      onSelect={(date) => onFilterChange({ ...filters, endDate: date || null })}
+                      selected={tempFilters.endDate || undefined}
+                      onSelect={(date) => setTempFilters({ ...tempFilters, endDate: date || null })}
                       locale={ptBR}
                     />
                   </PopoverContent>
@@ -175,13 +198,23 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
             {/* Empresas */}
             {data.empresas.length > 0 && (
               <div>
-                <Label className="mb-3 block">Empresas</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Empresas</Label>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-xs"
+                    onClick={handleSelectAllEmpresas}
+                  >
+                    Selecionar Todos
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {data.empresas.map(empresa => (
                     <div key={empresa} className="flex items-center gap-2">
                       <Checkbox
                         id={`empresa-${empresa}`}
-                        checked={filters.empresas.includes(empresa)}
+                        checked={tempFilters.empresas.includes(empresa)}
                         onCheckedChange={() => handleEmpresaToggle(empresa)}
                       />
                       <label htmlFor={`empresa-${empresa}`} className="text-sm cursor-pointer">
@@ -196,13 +229,23 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
             {/* Grupos */}
             {data.grupos.length > 0 && (
               <div>
-                <Label className="mb-3 block">Grupos</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Grupos</Label>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-xs"
+                    onClick={handleSelectAllGrupos}
+                  >
+                    Selecionar Todos
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {data.grupos.map(grupo => (
                     <div key={grupo} className="flex items-center gap-2">
                       <Checkbox
                         id={`grupo-${grupo}`}
-                        checked={filters.grupos.includes(grupo)}
+                        checked={tempFilters.grupos.includes(grupo)}
                         onCheckedChange={() => handleGrupoToggle(grupo)}
                       />
                       <label htmlFor={`grupo-${grupo}`} className="text-sm cursor-pointer">
@@ -217,13 +260,23 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
             {/* Subgrupos */}
             {data.subgrupos.length > 0 && (
               <div>
-                <Label className="mb-3 block">Subgrupos</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Subgrupos</Label>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-xs"
+                    onClick={handleSelectAllSubgrupos}
+                  >
+                    Selecionar Todos
+                  </Button>
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {data.subgrupos.map(subgrupo => (
                     <div key={subgrupo} className="flex items-center gap-2">
                       <Checkbox
                         id={`subgrupo-${subgrupo}`}
-                        checked={filters.subgrupos.includes(subgrupo)}
+                        checked={tempFilters.subgrupos.includes(subgrupo)}
                         onCheckedChange={() => handleSubgrupoToggle(subgrupo)}
                       />
                       <label htmlFor={`subgrupo-${subgrupo}`} className="text-sm cursor-pointer">
@@ -234,6 +287,11 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                 </div>
               </div>
             )}
+
+            {/* Apply Button */}
+            <Button onClick={handleApply} className="w-full">
+              Aplicar Filtros
+            </Button>
           </div>
         </Card>
       )}
