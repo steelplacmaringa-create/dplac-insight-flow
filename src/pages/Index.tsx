@@ -8,12 +8,13 @@ import { CategoryPieChart } from '@/components/charts/CategoryPieChart';
 import { YearComparisonChart } from '@/components/charts/YearComparisonChart';
 import { CashFlowChart } from '@/components/charts/CashFlowChart';
 import { TopExpensesChart } from '@/components/charts/TopExpensesChart';
+import { TopRevenuesChart } from '@/components/charts/TopRevenuesChart';
 import { AIInsights } from '@/components/AIInsights';
 import { DREAnalysis } from '@/components/DREAnalysis';
 import { RankingMonths } from '@/components/RankingMonths';
 import { MonthlyReport } from '@/components/MonthlyReport';
 import { parseExcelFile } from '@/utils/excelParser';
-import { filterTransactions, calculateKPIs, groupByCategory, compareYears, getTopExpenses } from '@/utils/dataProcessing';
+import { filterTransactions, calculateKPIs, groupByCategory, compareYears, getTopExpenses, getTopRevenues } from '@/utils/dataProcessing';
 import { ProcessedData, FilterState } from '@/types/financial';
 import { TrendingUp, TrendingDown, DollarSign, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ const Index = () => {
   const groupedByGrupo = groupByCategory(filteredTransactions, 'grupo');
   const yearComparison = data ? compareYears(filteredTransactions) : [];
   const topExpenses = getTopExpenses(filteredTransactions);
+  const topRevenues = getTopRevenues(filteredTransactions);
 
   const monthlyData = kpiData.receitaPorMes.map(r => {
     const despesa = kpiData.despesaPorMes.find(d => d.month === r.month);
@@ -92,7 +94,9 @@ const Index = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RevenueExpenseChart data={monthlyData} />
-              <CategoryPieChart data={groupedByGrupo} title="Distribuição por Grupo" />
+              <div className="h-[400px]">
+                <CategoryPieChart data={groupedByGrupo} title="Distribuição por Grupo" />
+              </div>
             </div>
 
             {yearComparison.length > 1 && (
@@ -103,6 +107,8 @@ const Index = () => {
               <CashFlowChart kpiData={kpiData} />
               <TopExpensesChart data={topExpenses} />
             </div>
+
+            <TopRevenuesChart data={topRevenues} />
 
             <DREAnalysis transactions={filteredTransactions} />
 

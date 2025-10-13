@@ -32,18 +32,21 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       const current = monthMap.get(monthKey);
       
       if (t.tipo === 'c') {
-        if (t.grupo.toLowerCase().includes('receita') && t.grupo.toLowerCase().includes('venda')) {
+        const grupoLower = t.grupo.toLowerCase();
+        // Receita de vendas: deve estar no grupo que contém "receita" E "venda"
+        if (grupoLower.includes('receita') && grupoLower.includes('venda')) {
           current.receitaVendas += Math.abs(t.valor);
-        } else {
-          current.outrasReceitas += Math.abs(t.valor);
         }
+        // Todas as receitas (tipo 'c') vão para receita total
         current.receitaTotal += Math.abs(t.valor);
+        // Outras receitas são: receita total - receita de vendas
+        current.outrasReceitas = current.receitaTotal - current.receitaVendas;
       } else {
         current.despesas += Math.abs(t.valor);
       }
     });
 
-    // Calcular lucro
+    // Calcular lucro baseado no tipo de receita selecionado
     monthMap.forEach((value) => {
       const receita = revenueType === 'vendas' ? value.receitaVendas : value.receitaTotal;
       value.lucro = receita - value.despesas;
@@ -80,12 +83,15 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       const current = yearMap.get(year);
       
       if (t.tipo === 'c') {
-        if (t.grupo.toLowerCase().includes('receita') && t.grupo.toLowerCase().includes('venda')) {
+        const grupoLower = t.grupo.toLowerCase();
+        // Receita de vendas: deve estar no grupo que contém "receita" E "venda"
+        if (grupoLower.includes('receita') && grupoLower.includes('venda')) {
           current.receitaVendas += Math.abs(t.valor);
-        } else {
-          current.outrasReceitas += Math.abs(t.valor);
         }
+        // Todas as receitas (tipo 'c') vão para receita total
         current.receitaTotal += Math.abs(t.valor);
+        // Outras receitas são: receita total - receita de vendas
+        current.outrasReceitas = current.receitaTotal - current.receitaVendas;
       } else {
         const grupo = t.grupo.toLowerCase();
         if (grupo.includes('custo') && grupo.includes('variá')) {
@@ -104,7 +110,7 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       }
     });
 
-    // Calcular margens e resultado
+    // Calcular margens e resultado baseado no tipo de receita selecionado
     yearMap.forEach((value) => {
       const receita = revenueType === 'vendas' ? value.receitaVendas : value.receitaTotal;
       value.margemContribuicao = receita - value.custosVariaveis;

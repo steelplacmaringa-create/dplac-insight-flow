@@ -41,8 +41,8 @@ export const calculateKPIs = (transactions: FinancialTransaction[]): KPIData => 
   const receitas = transactions.filter(t => t.tipo === 'c');
   const despesas = transactions.filter(t => t.tipo === 'd');
 
-  const totalReceita = receitas.reduce((sum, t) => sum + t.valor, 0);
-  const totalDespesa = Math.abs(despesas.reduce((sum, t) => sum + t.valor, 0));
+  const totalReceita = receitas.reduce((sum, t) => sum + Math.abs(t.valor), 0);
+  const totalDespesa = despesas.reduce((sum, t) => sum + Math.abs(t.valor), 0);
   const lucroLiquido = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucroLiquido / totalReceita) * 100 : 0;
 
@@ -128,4 +128,12 @@ export const getTopExpenses = (
 ): { name: string; value: number }[] => {
   const despesas = transactions.filter(t => t.tipo === 'd');
   return groupByCategory(despesas, 'subgrupo').slice(0, limit);
+};
+
+export const getTopRevenues = (
+  transactions: FinancialTransaction[],
+  limit: number = 10
+): { name: string; value: number }[] => {
+  const receitas = transactions.filter(t => t.tipo === 'c');
+  return groupByCategory(receitas, 'subgrupo').slice(0, limit);
 };
