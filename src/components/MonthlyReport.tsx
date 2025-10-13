@@ -13,6 +13,7 @@ interface MonthlyReportProps {
 
 export const MonthlyReport = ({ transactions }: MonthlyReportProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [reportType, setReportType] = useState<'sintetico' | 'analitico'>('sintetico');
 
   const calculateMonthlyData = () => {
     const monthMap = new Map<string, { receitas: number; despesas: number; lucro: number }>();
@@ -56,51 +57,83 @@ export const MonthlyReport = ({ transactions }: MonthlyReportProps) => {
 
     // Título
     doc.setFontSize(18);
-    doc.text('Relatório Mensal - DPLAC', 14, 20);
+    doc.text(`Relatório Mensal ${reportType === 'sintetico' ? 'Sintético' : 'Analítico'} - DPLAC`, 14, 20);
     
     doc.setFontSize(11);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 28);
 
-    // Tabela
-    const tableData = monthlyData.map(row => [
-      formatMonth(row.month),
-      formatCurrency(row.receitas),
-      formatCurrency(row.despesas),
-      formatCurrency(row.lucro),
-    ]);
+    if (reportType === 'sintetico') {
+      // Relatório Sintético (resumo mensal)
+      const tableData = monthlyData.map(row => [
+        formatMonth(row.month),
+        formatCurrency(row.receitas),
+        formatCurrency(row.despesas),
+        formatCurrency(row.lucro),
+      ]);
 
-    // Totais
-    const totals = monthlyData.reduce(
-      (acc, row) => ({
-        receitas: acc.receitas + row.receitas,
-        despesas: acc.despesas + row.despesas,
-        lucro: acc.lucro + row.lucro,
-      }),
-      { receitas: 0, despesas: 0, lucro: 0 }
-    );
+      const totals = monthlyData.reduce(
+        (acc, row) => ({
+          receitas: acc.receitas + row.receitas,
+          despesas: acc.despesas + row.despesas,
+          lucro: acc.lucro + row.lucro,
+        }),
+        { receitas: 0, despesas: 0, lucro: 0 }
+      );
 
-    tableData.push([
-      'TOTAL',
-      formatCurrency(totals.receitas),
-      formatCurrency(totals.despesas),
-      formatCurrency(totals.lucro),
-    ]);
+      tableData.push([
+        'TOTAL',
+        formatCurrency(totals.receitas),
+        formatCurrency(totals.despesas),
+        formatCurrency(totals.lucro),
+      ]);
 
-    autoTable(doc, {
-      startY: 35,
-      head: [['Mês', 'Recebimentos de Vendas', 'Despesas', 'Lucro']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246] },
-      styles: { fontSize: 9 },
-      columnStyles: {
-        1: { halign: 'right' },
-        2: { halign: 'right' },
-        3: { halign: 'right' },
-      },
-    });
+      autoTable(doc, {
+        startY: 35,
+        head: [['Mês', 'Recebimentos de Vendas', 'Despesas', 'Lucro']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 9 },
+        columnStyles: {
+          1: { halign: 'right' },
+          2: { halign: 'right' },
+          3: { halign: 'right' },
+        },
+      });
+    } else {
+      // Relatório Analítico (todas as transações)
+      const tableData = transactions
+        .sort((a, b) => a.date.getTime() - b.date.getTime())
+        .map(t => [
+          t.date.toLocaleDateString('pt-BR'),
+          t.empresa,
+          t.descricao,
+          t.grupo,
+          t.subgrupo,
+          t.tipo === 'c' ? 'Receita' : 'Despesa',
+          formatCurrency(Math.abs(t.valor)),
+        ]);
 
-    doc.save('relatorio-mensal-dplac.pdf');
+      autoTable(doc, {
+        startY: 35,
+        head: [['Data', 'Empresa', 'Descrição', 'Grupo', 'Subgrupo', 'Tipo', 'Valor']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 7 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 20 },
+          6: { halign: 'right', cellWidth: 25 },
+        },
+      });
+    }
+
+    doc.save(`relatorio-mensal-${reportType}-dplac.pdf`);
   };
 
   if (!isExpanded) {
@@ -124,9 +157,15 @@ export const MonthlyReport = ({ transactions }: MonthlyReportProps) => {
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Relatório Mensal</h3>
           <div className="flex gap-2">
+            <Button onClick={() => setReportType('sintetico')} size="sm" variant={reportType === 'sintetico' ? 'default' : 'outline'}>
+              Sintético
+            </Button>
+            <Button onClick={() => setReportType('analitico')} size="sm" variant={reportType === 'analitico' ? 'default' : 'outline'}>
+              Analítico
+            </Button>
             <Button onClick={exportToPDF} size="sm" variant="outline">
               <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
+              PDF
             </Button>
             <Button onClick={() => setIsExpanded(false)} size="sm" variant="ghost">
               <ChevronDown className="w-4 h-4" />

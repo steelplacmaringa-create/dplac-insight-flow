@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FinancialTransaction } from '@/types/financial';
 import { formatCurrency } from '@/utils/excelParser';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 interface DREAnalysisProps {
   transactions: FinancialTransaction[];
@@ -11,6 +13,18 @@ interface DREAnalysisProps {
 
 export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
   const [revenueType, setRevenueType] = useState<'total' | 'vendas'>('total');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    custosVariaveis: false,
+    despesasPessoal: false,
+    despesasAdministrativas: false,
+    despesasOperacionais: false,
+    despesasFinanceiras: false,
+    outrasDespesas: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  };
 
   // Calcular DRE Mensal
   const calculateMonthlyDRE = () => {
@@ -57,7 +71,7 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       .sort((a, b) => a.month.localeCompare(b.month));
   };
 
-  // Calcular DRE Anual
+  // Calcular DRE Anual com detalhes por grupo
   const calculateAnnualDRE = () => {
     const yearMap = new Map<string, any>();
 
@@ -70,12 +84,18 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
           outrasReceitas: 0,
           receitaTotal: 0,
           custosVariaveis: 0,
+          custosVariaveisDetalhes: new Map<string, number>(),
           margemContribuicao: 0,
           despesasPessoal: 0,
+          despesasPessoalDetalhes: new Map<string, number>(),
           despesasAdministrativas: 0,
+          despesasAdministrativasDetalhes: new Map<string, number>(),
           despesasOperacionais: 0,
+          despesasOperacionaisDetalhes: new Map<string, number>(),
           despesasFinanceiras: 0,
+          despesasFinanceirasDetalhes: new Map<string, number>(),
           outrasDespesas: 0,
+          outrasDespesasDetalhes: new Map<string, number>(),
           resultadoOperacional: 0,
         });
       }
@@ -84,33 +104,56 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       
       if (t.tipo === 'c') {
         const grupoLower = t.grupo.toLowerCase();
-        // Receita de vendas: deve estar no grupo que contém "receita" E "venda"
         if (grupoLower.includes('receita') && grupoLower.includes('venda')) {
           current.receitaVendas += Math.abs(t.valor);
         }
-        // Todas as receitas (tipo 'c') vão para receita total
         current.receitaTotal += Math.abs(t.valor);
-        // Outras receitas são: receita total - receita de vendas
         current.outrasReceitas = current.receitaTotal - current.receitaVendas;
       } else {
         const grupo = t.grupo.toLowerCase();
+        const grupoOriginal = t.grupo;
+        const valor = Math.abs(t.valor);
+        
         if (grupo.includes('custo') && grupo.includes('variá')) {
-          current.custosVariaveis += Math.abs(t.valor);
+          current.custosVariaveis += valor;
+          current.custosVariaveisDetalhes.set(
+            grupoOriginal,
+            (current.custosVariaveisDetalhes.get(grupoOriginal) || 0) + valor
+          );
         } else if (grupo.includes('pessoal')) {
-          current.despesasPessoal += Math.abs(t.valor);
+          current.despesasPessoal += valor;
+          current.despesasPessoalDetalhes.set(
+            grupoOriginal,
+            (current.despesasPessoalDetalhes.get(grupoOriginal) || 0) + valor
+          );
         } else if (grupo.includes('administrat')) {
-          current.despesasAdministrativas += Math.abs(t.valor);
+          current.despesasAdministrativas += valor;
+          current.despesasAdministrativasDetalhes.set(
+            grupoOriginal,
+            (current.despesasAdministrativasDetalhes.get(grupoOriginal) || 0) + valor
+          );
         } else if (grupo.includes('operacion')) {
-          current.despesasOperacionais += Math.abs(t.valor);
+          current.despesasOperacionais += valor;
+          current.despesasOperacionaisDetalhes.set(
+            grupoOriginal,
+            (current.despesasOperacionaisDetalhes.get(grupoOriginal) || 0) + valor
+          );
         } else if (grupo.includes('financeira')) {
-          current.despesasFinanceiras += Math.abs(t.valor);
+          current.despesasFinanceiras += valor;
+          current.despesasFinanceirasDetalhes.set(
+            grupoOriginal,
+            (current.despesasFinanceirasDetalhes.get(grupoOriginal) || 0) + valor
+          );
         } else {
-          current.outrasDespesas += Math.abs(t.valor);
+          current.outrasDespesas += valor;
+          current.outrasDespesasDetalhes.set(
+            grupoOriginal,
+            (current.outrasDespesasDetalhes.get(grupoOriginal) || 0) + valor
+          );
         }
       }
     });
 
-    // Calcular margens e resultado baseado no tipo de receita selecionado
     yearMap.forEach((value) => {
       const receita = revenueType === 'vendas' ? value.receitaVendas : value.receitaTotal;
       value.margemContribuicao = receita - value.custosVariaveis;
@@ -208,82 +251,198 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
         </TabsContent>
 
         <TabsContent value="anual">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Categoria</th>
-                  {annualDRE.map(row => (
-                    <th key={row.year} className="text-right p-2">{row.year}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2 font-semibold">Receita de Vendas</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2">{formatCurrency(row.receitaVendas)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Outras Entradas</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2">{formatCurrency(row.outrasReceitas)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2 pl-4 text-muted-foreground">(-) Custos Variáveis</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.custosVariaveis)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50 font-semibold">
-                  <td className="p-2">= Margem de Contribuição</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2">{formatCurrency(row.margemContribuicao)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Despesas com Pessoal</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasPessoal)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Despesas Administrativas</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasAdministrativas)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Despesas Operacionais</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasOperacionais)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Despesas Financeiras</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasFinanceiras)}</td>
-                  ))}
-                </tr>
-                <tr className="border-b hover:bg-muted/50">
-                  <td className="p-2">Outras Despesas</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.outrasDespesas)}</td>
-                  ))}
-                </tr>
-                <tr className="border-t-2 font-bold">
-                  <td className="p-2">= Resultado Operacional</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className={`text-right p-2 ${row.resultadoOperacional >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {formatCurrency(row.resultadoOperacional)}
+          <TooltipProvider>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Categoria</th>
+                    {annualDRE.map(row => (
+                      <th key={row.year} className="text-right p-2">{row.year}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b hover:bg-muted/50">
+                    <td className="p-2 font-semibold">Receita de Vendas</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2">{formatCurrency(row.receitaVendas)}</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b hover:bg-muted/50">
+                    <td className="p-2">Outras Entradas</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2">{formatCurrency(row.outrasReceitas)}</td>
+                    ))}
+                  </tr>
+                  
+                  {/* Custos Variáveis */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('custosVariaveis')}>
+                    <td className="p-2 pl-4 text-muted-foreground flex items-center gap-2">
+                      {expandedSections.custosVariaveis ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      (-) Custos Variáveis
                     </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.custosVariaveis)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.custosVariaveis && annualDRE[0]?.custosVariaveisDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].custosVariaveisDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.custosVariaveisDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  <tr className="border-b hover:bg-muted/50 font-semibold">
+                    <td className="p-2 flex items-center gap-2">
+                      = Margem de Contribuição
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>A Margem de Contribuição representa o valor disponível após subtrair os custos variáveis da receita. É utilizada para cobrir custos fixos e gerar lucro.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2">{formatCurrency(row.margemContribuicao)}</td>
+                    ))}
+                  </tr>
+                  
+                  {/* Despesas com Pessoal */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('despesasPessoal')}>
+                    <td className="p-2 flex items-center gap-2">
+                      {expandedSections.despesasPessoal ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Despesas com Pessoal
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasPessoal)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.despesasPessoal && annualDRE[0]?.despesasPessoalDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].despesasPessoalDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.despesasPessoalDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Despesas Administrativas */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('despesasAdministrativas')}>
+                    <td className="p-2 flex items-center gap-2">
+                      {expandedSections.despesasAdministrativas ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Despesas Administrativas
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasAdministrativas)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.despesasAdministrativas && annualDRE[0]?.despesasAdministrativasDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].despesasAdministrativasDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.despesasAdministrativasDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Despesas Operacionais */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('despesasOperacionais')}>
+                    <td className="p-2 flex items-center gap-2">
+                      {expandedSections.despesasOperacionais ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Despesas Operacionais
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasOperacionais)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.despesasOperacionais && annualDRE[0]?.despesasOperacionaisDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].despesasOperacionaisDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.despesasOperacionaisDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Despesas Financeiras */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('despesasFinanceiras')}>
+                    <td className="p-2 flex items-center gap-2">
+                      {expandedSections.despesasFinanceiras ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Despesas Financeiras
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.despesasFinanceiras)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.despesasFinanceiras && annualDRE[0]?.despesasFinanceirasDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].despesasFinanceirasDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.despesasFinanceirasDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Outras Despesas */}
+                  <tr className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => toggleSection('outrasDespesas')}>
+                    <td className="p-2 flex items-center gap-2">
+                      {expandedSections.outrasDespesas ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Outras Despesas
+                    </td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 text-destructive">{formatCurrency(row.outrasDespesas)}</td>
+                    ))}
+                  </tr>
+                  {expandedSections.outrasDespesas && annualDRE[0]?.outrasDespesasDetalhes.size > 0 && (
+                    Array.from(annualDRE[0].outrasDespesasDetalhes.keys()).map((grupo: string) => (
+                      <tr key={grupo} className="hover:bg-muted/30">
+                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
+                        {annualDRE.map(row => (
+                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                            {formatCurrency(row.outrasDespesasDetalhes.get(grupo) || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  <tr className="border-t-2 font-bold">
+                    <td className="p-2">= Resultado Operacional</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className={`text-right p-2 ${row.resultadoOperacional >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(row.resultadoOperacional)}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </TooltipProvider>
         </TabsContent>
       </Tabs>
     </Card>

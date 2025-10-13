@@ -38,25 +38,34 @@ export const RankingMonths = ({ transactions }: RankingMonthsProps) => {
     return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
   };
 
-  // Top 3 Receitas
-  const topReceitas = [...monthlyData]
-    .sort((a, b) => b.receitas - a.receitas)
-    .slice(0, 3);
+  // Função para obter meses únicos inteligentemente
+  const getUniqueMonths = (data: typeof monthlyData, sortFn: (a: typeof monthlyData[0], b: typeof monthlyData[0]) => number, limit: number = 3) => {
+    const sorted = [...data].sort(sortFn);
+    const unique: typeof monthlyData = [];
+    const seenMonths = new Set<string>();
+    
+    for (const item of sorted) {
+      if (!seenMonths.has(item.month)) {
+        unique.push(item);
+        seenMonths.add(item.month);
+        if (unique.length >= limit) break;
+      }
+    }
+    
+    return unique;
+  };
 
-  // Bottom 3 Receitas
-  const bottomReceitas = [...monthlyData]
-    .sort((a, b) => a.receitas - b.receitas)
-    .slice(0, 3);
+  // Top 3 Receitas (únicos)
+  const topReceitas = getUniqueMonths(monthlyData, (a, b) => b.receitas - a.receitas, 3);
 
-  // Menores Despesas (melhores)
-  const bestDespesas = [...monthlyData]
-    .sort((a, b) => a.despesas - b.despesas)
-    .slice(0, 3);
+  // Bottom 3 Receitas (únicos)
+  const bottomReceitas = getUniqueMonths(monthlyData, (a, b) => a.receitas - b.receitas, 3);
 
-  // Maiores Despesas (piores)
-  const worstDespesas = [...monthlyData]
-    .sort((a, b) => b.despesas - a.despesas)
-    .slice(0, 3);
+  // Menores Despesas (melhores, únicos)
+  const bestDespesas = getUniqueMonths(monthlyData, (a, b) => a.despesas - b.despesas, 3);
+
+  // Maiores Despesas (piores, únicos)
+  const worstDespesas = getUniqueMonths(monthlyData, (a, b) => b.despesas - a.despesas, 3);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
