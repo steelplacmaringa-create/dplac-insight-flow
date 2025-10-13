@@ -9,6 +9,7 @@ import { YearComparisonChart } from '@/components/charts/YearComparisonChart';
 import { CashFlowChart } from '@/components/charts/CashFlowChart';
 import { TopExpensesChart } from '@/components/charts/TopExpensesChart';
 import { TopRevenuesChart } from '@/components/charts/TopRevenuesChart';
+import { SalesYearComparison } from '@/components/charts/SalesYearComparison';
 import { AIInsights } from '@/components/AIInsights';
 import { DREAnalysis } from '@/components/DREAnalysis';
 import { RankingMonths } from '@/components/RankingMonths';
@@ -102,6 +103,8 @@ const Index = () => {
             {yearComparison.length > 1 && (
               <YearComparisonChart data={yearComparison} />
             )}
+
+            <SalesYearComparison transactions={filteredTransactions} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CashFlowChart kpiData={kpiData} />

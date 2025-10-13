@@ -71,12 +71,12 @@ export const CategoryPieChart = ({ data, title }: CategoryPieChartProps) => {
         <PieChart>
           <Pie
             data={chartData}
-            cx="50%"
+            cx="40%"
             cy="50%"
             labelLine={false}
             label={renderCustomLabel}
-            outerRadius={140}
-            innerRadius={80}
+            outerRadius={120}
+            innerRadius={70}
             fill="#8884d8"
             dataKey="value"
             paddingAngle={2}
@@ -91,8 +91,10 @@ export const CategoryPieChart = ({ data, title }: CategoryPieChartProps) => {
           </Pie>
           <Tooltip content={<CustomTooltip />} />
           <Legend 
-            verticalAlign="bottom" 
-            height={36}
+            layout="vertical"
+            align="right"
+            verticalAlign="middle"
+            wrapperStyle={{ paddingLeft: '10px', fontSize: '11px', maxWidth: '200px' }}
             formatter={(value) => {
               const item = chartData.find(d => d.name === value);
               return `${value}: ${formatCurrency(item?.value || 0)}`;
