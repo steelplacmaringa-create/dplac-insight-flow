@@ -13,17 +13,15 @@ interface DREAnalysisProps {
 
 export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
   const [revenueType, setRevenueType] = useState<'total' | 'vendas'>('total');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    custosVariaveis: false,
-    despesasPessoal: false,
-    despesasAdministrativas: false,
-    despesasOperacionais: false,
-    despesasFinanceiras: false,
-    outrasDespesas: false,
-  });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  };
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))
   };
 
   // Calcular DRE Mensal
@@ -71,7 +69,7 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
       .sort((a, b) => a.month.localeCompare(b.month));
   };
 
-  // Calcular DRE Anual com detalhes por grupo
+  // Calcular DRE Anual com detalhes por grupo e subgrupo
   const calculateAnnualDRE = () => {
     const yearMap = new Map<string, any>();
 
@@ -84,18 +82,18 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
           outrasReceitas: 0,
           receitaTotal: 0,
           custosVariaveis: 0,
-          custosVariaveisDetalhes: new Map<string, number>(),
+          custosVariaveisDetalhes: new Map<string, Map<string, number>>(), // grupo -> subgrupo -> valor
           margemContribuicao: 0,
           despesasPessoal: 0,
-          despesasPessoalDetalhes: new Map<string, number>(),
+          despesasPessoalDetalhes: new Map<string, Map<string, number>>(),
           despesasAdministrativas: 0,
-          despesasAdministrativasDetalhes: new Map<string, number>(),
+          despesasAdministrativasDetalhes: new Map<string, Map<string, number>>(),
           despesasOperacionais: 0,
-          despesasOperacionaisDetalhes: new Map<string, number>(),
+          despesasOperacionaisDetalhes: new Map<string, Map<string, number>>(),
           despesasFinanceiras: 0,
-          despesasFinanceirasDetalhes: new Map<string, number>(),
+          despesasFinanceirasDetalhes: new Map<string, Map<string, number>>(),
           outrasDespesas: 0,
-          outrasDespesasDetalhes: new Map<string, number>(),
+          outrasDespesasDetalhes: new Map<string, Map<string, number>>(),
           resultadoOperacional: 0,
         });
       }
@@ -110,46 +108,40 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
         current.receitaTotal += Math.abs(t.valor);
         current.outrasReceitas = current.receitaTotal - current.receitaVendas;
       } else {
-        const grupo = t.grupo.toLowerCase();
+        const grupoLower = t.grupo.toLowerCase();
         const grupoOriginal = t.grupo;
+        const subgrupoOriginal = t.subgrupo;
         const valor = Math.abs(t.valor);
         
-        if (grupo.includes('custo') && grupo.includes('variá')) {
+        const addToCategory = (detalhesMap: Map<string, Map<string, number>>) => {
+          if (!detalhesMap.has(grupoOriginal)) {
+            detalhesMap.set(grupoOriginal, new Map<string, number>());
+          }
+          const subgrupoMap = detalhesMap.get(grupoOriginal)!;
+          subgrupoMap.set(
+            subgrupoOriginal,
+            (subgrupoMap.get(subgrupoOriginal) || 0) + valor
+          );
+        };
+        
+        if (grupoLower.includes('custo') && grupoLower.includes('variá')) {
           current.custosVariaveis += valor;
-          current.custosVariaveisDetalhes.set(
-            grupoOriginal,
-            (current.custosVariaveisDetalhes.get(grupoOriginal) || 0) + valor
-          );
-        } else if (grupo.includes('pessoal')) {
+          addToCategory(current.custosVariaveisDetalhes);
+        } else if (grupoLower.includes('pessoal')) {
           current.despesasPessoal += valor;
-          current.despesasPessoalDetalhes.set(
-            grupoOriginal,
-            (current.despesasPessoalDetalhes.get(grupoOriginal) || 0) + valor
-          );
-        } else if (grupo.includes('administrat')) {
+          addToCategory(current.despesasPessoalDetalhes);
+        } else if (grupoLower.includes('administrat')) {
           current.despesasAdministrativas += valor;
-          current.despesasAdministrativasDetalhes.set(
-            grupoOriginal,
-            (current.despesasAdministrativasDetalhes.get(grupoOriginal) || 0) + valor
-          );
-        } else if (grupo.includes('operacion')) {
+          addToCategory(current.despesasAdministrativasDetalhes);
+        } else if (grupoLower.includes('operacion')) {
           current.despesasOperacionais += valor;
-          current.despesasOperacionaisDetalhes.set(
-            grupoOriginal,
-            (current.despesasOperacionaisDetalhes.get(grupoOriginal) || 0) + valor
-          );
-        } else if (grupo.includes('financeira')) {
+          addToCategory(current.despesasOperacionaisDetalhes);
+        } else if (grupoLower.includes('financeira')) {
           current.despesasFinanceiras += valor;
-          current.despesasFinanceirasDetalhes.set(
-            grupoOriginal,
-            (current.despesasFinanceirasDetalhes.get(grupoOriginal) || 0) + valor
-          );
+          addToCategory(current.despesasFinanceirasDetalhes);
         } else {
           current.outrasDespesas += valor;
-          current.outrasDespesasDetalhes.set(
-            grupoOriginal,
-            (current.outrasDespesasDetalhes.get(grupoOriginal) || 0) + valor
-          );
+          addToCategory(current.outrasDespesasDetalhes);
         }
       }
     });
@@ -287,16 +279,45 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.custosVariaveis && annualDRE[0]?.custosVariaveisDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].custosVariaveisDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.custosVariaveisDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].custosVariaveisDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `custosVariaveis_${grupo}`;
+                      
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.custosVariaveisDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.custosVariaveisDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].custosVariaveisDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.custosVariaveisDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   <tr className="border-b hover:bg-muted/50 font-semibold">
@@ -327,16 +348,44 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.despesasPessoal && annualDRE[0]?.despesasPessoalDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].despesasPessoalDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.despesasPessoalDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].despesasPessoalDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `despesasPessoal_${grupo}`;
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.despesasPessoalDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.despesasPessoalDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].despesasPessoalDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.despesasPessoalDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   {/* Despesas Administrativas */}
@@ -350,16 +399,44 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.despesasAdministrativas && annualDRE[0]?.despesasAdministrativasDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].despesasAdministrativasDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.despesasAdministrativasDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].despesasAdministrativasDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `despesasAdministrativas_${grupo}`;
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.despesasAdministrativasDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.despesasAdministrativasDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].despesasAdministrativasDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.despesasAdministrativasDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   {/* Despesas Operacionais */}
@@ -373,16 +450,44 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.despesasOperacionais && annualDRE[0]?.despesasOperacionaisDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].despesasOperacionaisDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.despesasOperacionaisDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].despesasOperacionaisDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `despesasOperacionais_${grupo}`;
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.despesasOperacionaisDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.despesasOperacionaisDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].despesasOperacionaisDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.despesasOperacionaisDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   {/* Despesas Financeiras */}
@@ -396,16 +501,44 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.despesasFinanceiras && annualDRE[0]?.despesasFinanceirasDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].despesasFinanceirasDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.despesasFinanceirasDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].despesasFinanceirasDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `despesasFinanceiras_${grupo}`;
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.despesasFinanceirasDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.despesasFinanceirasDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].despesasFinanceirasDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.despesasFinanceirasDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   {/* Outras Despesas */}
@@ -419,16 +552,44 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                     ))}
                   </tr>
                   {expandedSections.outrasDespesas && annualDRE[0]?.outrasDespesasDetalhes.size > 0 && (
-                    Array.from(annualDRE[0].outrasDespesasDetalhes.keys()).map((grupo: string) => (
-                      <tr key={grupo} className="hover:bg-muted/30">
-                        <td className="p-2 pl-8 text-xs text-muted-foreground">{grupo}</td>
-                        {annualDRE.map(row => (
-                          <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                            {formatCurrency(row.outrasDespesasDetalhes.get(grupo) || 0)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    Array.from(annualDRE[0].outrasDespesasDetalhes.keys()).map((grupo: string) => {
+                      const grupoKey = `outrasDespesas_${grupo}`;
+                      return (
+                        <>
+                          <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                            <td className="p-2 pl-8 text-sm flex items-center gap-2">
+                              {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              {grupo}
+                            </td>
+                            {annualDRE.map(row => {
+                              const subgrupoMap = row.outrasDespesasDetalhes.get(grupo);
+                              const total = (subgrupoMap ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) : 0) as number;
+                              return (
+                                <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                  {formatCurrency(total)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {expandedGroups[grupoKey] && annualDRE[0]?.outrasDespesasDetalhes.get(grupo) && (
+                            Array.from(annualDRE[0].outrasDespesasDetalhes.get(grupo)!.keys()).map((subgrupo: string) => (
+                              <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                                <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                                {annualDRE.map(row => {
+                                  const subgrupoMap = row.outrasDespesasDetalhes.get(grupo);
+                                  const valor = (subgrupoMap?.get(subgrupo) as number) || 0;
+                                  return (
+                                    <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                      {formatCurrency(valor)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          )}
+                        </>
+                      );
+                    })
                   )}
                   
                   <tr className="border-t-2 font-bold">
