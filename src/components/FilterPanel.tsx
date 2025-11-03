@@ -53,6 +53,17 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
     setTempFilters({ ...tempFilters, subgrupos: data.subgrupos });
   };
 
+  const handleContaToggle = (conta: string) => {
+    const newContas = tempFilters.contas.includes(conta)
+      ? tempFilters.contas.filter(c => c !== conta)
+      : [...tempFilters.contas, conta];
+    setTempFilters({ ...tempFilters, contas: newContas });
+  };
+
+  const handleSelectAllContas = () => {
+    setTempFilters({ ...tempFilters, contas: data.contas });
+  };
+
   const handleTipoToggle = (tipo: 'c' | 'd') => {
     const currentTipo = tempFilters.tipo || [];
     const newTipo = currentTipo.includes(tipo)
@@ -71,6 +82,7 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
       empresas: [],
       grupos: [],
       subgrupos: [],
+      contas: [],
       tipo: null,
       startDate: null,
       endDate: null,
@@ -83,6 +95,7 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
     filters.empresas.length > 0 ||
     filters.grupos.length > 0 ||
     filters.subgrupos.length > 0 ||
+    filters.contas.length > 0 ||
     (filters.tipo && filters.tipo.length > 0) ||
     filters.startDate ||
     filters.endDate;
@@ -105,6 +118,7 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
               filters.empresas.length,
               filters.grupos.length,
               filters.subgrupos.length,
+              filters.contas.length,
               filters.tipo?.length || 0,
             ].reduce((a, b) => a + b, 0)}
           </span>
@@ -281,6 +295,37 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                       />
                       <label htmlFor={`subgrupo-${subgrupo}`} className="text-sm cursor-pointer">
                         {subgrupo}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contas */}
+            {data.contas.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Contas</Label>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-xs"
+                    onClick={handleSelectAllContas}
+                  >
+                    Selecionar Todos
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {data.contas.map(conta => (
+                    <div key={conta} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`conta-${conta}`}
+                        checked={tempFilters.contas.includes(conta)}
+                        onCheckedChange={() => handleContaToggle(conta)}
+                      />
+                      <label htmlFor={`conta-${conta}`} className="text-sm cursor-pointer">
+                        {conta}
                       </label>
                     </div>
                   ))}

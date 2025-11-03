@@ -26,6 +26,7 @@ const Index = () => {
     empresas: [],
     grupos: [],
     subgrupos: [],
+    contas: [],
     tipo: null,
     startDate: null,
     endDate: null,

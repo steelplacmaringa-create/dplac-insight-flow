@@ -15,14 +15,25 @@ export const SalesYearComparison = ({ transactions }: SalesYearComparisonProps) 
     t.grupo.toLowerCase().includes('venda')
   );
 
-  // Group by year
-  const yearData = salesRevenue.reduce((acc, t) => {
+  // Group by year with date ranges
+  const yearInfo = salesRevenue.reduce((acc, t) => {
     const year = t.date.getFullYear().toString();
-    acc[year] = (acc[year] || 0) + Math.abs(t.valor);
+    if (!acc[year]) {
+      acc[year] = {
+        total: 0,
+        minDate: t.date,
+        maxDate: t.date,
+        transactions: 0
+      };
+    }
+    acc[year].total += Math.abs(t.valor);
+    acc[year].transactions += 1;
+    if (t.date < acc[year].minDate) acc[year].minDate = t.date;
+    if (t.date > acc[year].maxDate) acc[year].maxDate = t.date;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, { total: number; minDate: Date; maxDate: Date; transactions: number }>);
 
-  const years = Object.keys(yearData).sort();
+  const years = Object.keys(yearInfo).sort();
   
   if (years.length < 2) {
     return null;
@@ -31,11 +42,34 @@ export const SalesYearComparison = ({ transactions }: SalesYearComparisonProps) 
   // Get first and last year for comparison
   const firstYear = years[0];
   const lastYear = years[years.length - 1];
-  const firstYearValue = yearData[firstYear];
-  const lastYearValue = yearData[lastYear];
+  
+  // Calculate the number of days in each year's data
+  const firstYearDays = Math.ceil(
+    (yearInfo[firstYear].maxDate.getTime() - yearInfo[firstYear].minDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const lastYearDays = Math.ceil(
+    (yearInfo[lastYear].maxDate.getTime() - yearInfo[lastYear].minDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
 
-  const difference = lastYearValue - firstYearValue;
-  const percentageChange = firstYearValue > 0 ? ((difference / firstYearValue) * 100) : 0;
+  const firstYearValue = yearInfo[firstYear].total;
+  const lastYearValue = yearInfo[lastYear].total;
+
+  // Calculate proportional values if periods are different
+  let adjustedFirstYearValue = firstYearValue;
+  let adjustedLastYearValue = lastYearValue;
+  let isProporcional = false;
+
+  // Only adjust if one period is significantly shorter (less than 80% of the other)
+  if (firstYearDays < lastYearDays * 0.8) {
+    adjustedFirstYearValue = (firstYearValue / firstYearDays) * lastYearDays;
+    isProporcional = true;
+  } else if (lastYearDays < firstYearDays * 0.8) {
+    adjustedLastYearValue = (lastYearValue / lastYearDays) * firstYearDays;
+    isProporcional = true;
+  }
+
+  const difference = adjustedLastYearValue - adjustedFirstYearValue;
+  const percentageChange = adjustedFirstYearValue > 0 ? ((difference / adjustedFirstYearValue) * 100) : 0;
   const isPositive = difference >= 0;
 
   // Get date range info
@@ -84,20 +118,28 @@ export const SalesYearComparison = ({ transactions }: SalesYearComparisonProps) 
             {isPositive ? (
               <>
                 O ano de <span className="font-semibold">{lastYear}</span> teve{' '}
-                <span className="font-bold text-success">{formatCurrency(difference)}</span>{' '}
+                <span className="font-bold text-success">{formatCurrency(Math.abs(difference))}</span>{' '}
                 ({percentageChange.toFixed(2)}%) a mais em Receita de Vendas comparado ao ano de{' '}
-                <span className="font-semibold">{firstYear}</span>.
+                <span className="font-semibold">{firstYear}</span>
+                {isProporcional && ' (proporcionalmente ajustado ao período)'}.
               </>
             ) : (
               <>
                 O ano de <span className="font-semibold">{lastYear}</span> teve{' '}
                 <span className="font-bold text-destructive">{formatCurrency(Math.abs(difference))}</span>{' '}
                 ({Math.abs(percentageChange).toFixed(2)}%) a menos em Receita de Vendas comparado ao ano de{' '}
-                <span className="font-semibold">{firstYear}</span>.
+                <span className="font-semibold">{firstYear}</span>
+                {isProporcional && ' (proporcionalmente ajustado ao período)'}.
               </>
             )}
           </p>
           <p className="text-xs text-muted-foreground mt-2">Período analisado: {dateRange}</p>
+          {isProporcional && (
+            <p className="text-xs text-warning mt-1">
+              * Comparação ajustada proporcionalmente devido a períodos diferentes: 
+              {firstYear} ({firstYearDays} dias) vs {lastYear} ({lastYearDays} dias)
+            </p>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -111,15 +153,24 @@ export const SalesYearComparison = ({ transactions }: SalesYearComparisonProps) 
             </thead>
             <tbody>
               {years.map((year, index) => {
-                const prevYearValue = index > 0 ? yearData[years[index - 1]] : 0;
-                const currentValue = yearData[year];
-                const yearChange = index > 0 && prevYearValue > 0 
-                  ? ((currentValue - prevYearValue) / prevYearValue) * 100 
-                  : 0;
+                const prevYearInfo = index > 0 ? yearInfo[years[index - 1]] : null;
+                const currentInfo = yearInfo[year];
+                const currentValue = currentInfo.total;
+                
+                let yearChange = 0;
+                if (index > 0 && prevYearInfo) {
+                  const prevValue = prevYearInfo.total;
+                  yearChange = prevValue > 0 ? ((currentValue - prevValue) / prevValue) * 100 : 0;
+                }
                 
                 return (
                   <tr key={year} className="border-b border-border/50">
-                    <td className="py-2 px-4 font-medium">{year}</td>
+                    <td className="py-2 px-4 font-medium">
+                      {year}
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({currentInfo.minDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - {currentInfo.maxDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })})
+                      </span>
+                    </td>
                     <td className="text-right py-2 px-4">{formatCurrency(currentValue)}</td>
                     <td className={`text-right py-2 px-4 ${
                       index === 0 ? 'text-muted-foreground' : yearChange >= 0 ? 'text-success' : 'text-destructive'

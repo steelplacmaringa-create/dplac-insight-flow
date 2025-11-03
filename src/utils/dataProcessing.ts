@@ -20,6 +20,11 @@ export const filterTransactions = (
       return false;
     }
 
+    // Filter by conta
+    if (filters.contas.length > 0 && !filters.contas.includes(t.conta)) {
+      return false;
+    }
+
     // Filter by tipo
     if (filters.tipo && filters.tipo.length > 0 && !filters.tipo.includes(t.tipo)) {
       return false;

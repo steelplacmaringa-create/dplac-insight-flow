@@ -25,6 +25,7 @@ export interface FilterState {
   empresas: string[];
   grupos: string[];
   subgrupos: string[];
+  contas: string[];
   tipo: ('c' | 'd')[] | null;
   startDate: Date | null;
   endDate: Date | null;
