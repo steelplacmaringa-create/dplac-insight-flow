@@ -12,7 +12,8 @@ import { TopRevenuesChart } from '@/components/charts/TopRevenuesChart';
 import { SalesYearComparison } from '@/components/charts/SalesYearComparison';
 import { AIInsights } from '@/components/AIInsights';
 import { DREAnalysis } from '@/components/DREAnalysis';
-import { RankingMonths } from '@/components/RankingMonths';
+import { RankingMonthsReceitas } from '@/components/RankingMonthsReceitas';
+import { RankingMonthsDespesas } from '@/components/RankingMonthsDespesas';
 import { MonthlyReport } from '@/components/MonthlyReport';
 import { parseExcelFile } from '@/utils/excelParser';
 import { filterTransactions, calculateKPIs, groupByCategory, compareYears, getTopExpenses, getTopRevenues } from '@/utils/dataProcessing';
@@ -116,7 +117,10 @@ const Index = () => {
 
             <DREAnalysis transactions={filteredTransactions} />
 
-            <RankingMonths transactions={filteredTransactions} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RankingMonthsReceitas transactions={filteredTransactions} />
+              <RankingMonthsDespesas transactions={filteredTransactions} />
+            </div>
 
             <MonthlyReport transactions={filteredTransactions} />
           </div>
