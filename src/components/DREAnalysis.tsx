@@ -75,17 +75,26 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
           receitas: new Map<string, Map<string, number>>(), // grupo -> subgrupo -> valor
           despesas: new Map<string, Map<string, number>>(), // grupo -> subgrupo -> valor
           totalReceitas: 0,
+          totalReceitasVendas: 0,
           totalDespesas: 0,
+          totalDespesasOperacionais: 0,
           lucro: 0,
         });
       }
 
       const current = yearMap.get(year);
       const valor = Math.abs(t.valor);
+      const grupoLower = t.grupo.toLowerCase();
       
       if (t.tipo === 'c') {
         // Receitas
         current.totalReceitas += valor;
+        
+        // Verificar se é receita de vendas
+        if (grupoLower.includes('receita') && grupoLower.includes('venda')) {
+          current.totalReceitasVendas += valor;
+        }
+        
         if (!current.receitas.has(t.grupo)) {
           current.receitas.set(t.grupo, new Map<string, number>());
         }
@@ -93,7 +102,15 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
         subgrupoMap.set(t.subgrupo, (subgrupoMap.get(t.subgrupo) || 0) + valor);
       } else {
         // Despesas
+        const isSaidaNaoOperacional = grupoLower.includes('saida') && grupoLower.includes('não operacional');
+        
         current.totalDespesas += valor;
+        
+        // Total de despesas operacionais (excluindo saída não operacional)
+        if (!isSaidaNaoOperacional) {
+          current.totalDespesasOperacionais += valor;
+        }
+        
         if (!current.despesas.has(t.grupo)) {
           current.despesas.set(t.grupo, new Map<string, number>());
         }
@@ -103,7 +120,10 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
     });
 
     yearMap.forEach((value) => {
-      value.lucro = value.totalReceitas - value.totalDespesas;
+      // Calcular lucro baseado no tipo de receita selecionado
+      const receita = revenueType === 'vendas' ? value.totalReceitasVendas : value.totalReceitas;
+      const despesa = revenueType === 'vendas' ? value.totalDespesasOperacionais : value.totalDespesas;
+      value.lucro = receita - despesa;
     });
 
     return Array.from(yearMap.entries())
@@ -211,13 +231,20 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                   <td className="p-2 font-bold text-success">RECEITAS</td>
                   {annualDRE.map(row => (
                     <td key={row.year} className="text-right p-2 font-bold text-success">
-                      {formatCurrency(row.totalReceitas)}
+                      {formatCurrency(revenueType === 'vendas' ? row.totalReceitasVendas : row.totalReceitas)}
                     </td>
                   ))}
                 </tr>
 
                 {annualDRE[0]?.receitas && Array.from(annualDRE[0].receitas.keys()).map((grupo: string) => {
                   const grupoKey = `receitas_${grupo}`;
+                  const grupoLower = grupo.toLowerCase();
+                  
+                  // Se "Receitas de Vendas" estiver selecionado, mostrar apenas grupos de receita de vendas
+                  if (revenueType === 'vendas' && !(grupoLower.includes('receita') && grupoLower.includes('venda'))) {
+                    return null;
+                  }
+                  
                   return (
                     <>
                       <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
@@ -262,13 +289,20 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
                   <td className="p-2 font-bold text-destructive">DESPESAS</td>
                   {annualDRE.map(row => (
                     <td key={row.year} className="text-right p-2 font-bold text-destructive">
-                      {formatCurrency(row.totalDespesas)}
+                      {formatCurrency(revenueType === 'vendas' ? row.totalDespesasOperacionais : row.totalDespesas)}
                     </td>
                   ))}
                 </tr>
 
                 {annualDRE[0]?.despesas && Array.from(annualDRE[0].despesas.keys()).map((grupo: string) => {
                   const grupoKey = `despesas_${grupo}`;
+                  const grupoLower = grupo.toLowerCase();
+                  
+                  // Se "Receitas de Vendas" estiver selecionado, desconsiderar "SAIDA NÃO OPERACIONAL"
+                  if (revenueType === 'vendas' && grupoLower.includes('saida') && grupoLower.includes('não operacional')) {
+                    return null;
+                  }
+                  
                   return (
                     <>
                       <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
