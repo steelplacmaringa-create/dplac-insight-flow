@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinancialTransaction } from '@/types/financial';
 import { formatCurrency } from '@/utils/excelParser';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { DRECharts } from '@/components/charts/DRECharts';
 
 interface DREAnalysisProps {
   transactions: FinancialTransaction[];
@@ -141,221 +142,229 @@ export const DREAnalysis = ({ transactions }: DREAnalysisProps) => {
   };
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Análise DRE</h3>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={revenueType === 'total' ? 'default' : 'outline'}
-            onClick={() => setRevenueType('total')}
-          >
-            Receitas Totais
-          </Button>
-          <Button
-            size="sm"
-            variant={revenueType === 'vendas' ? 'default' : 'outline'}
-            onClick={() => setRevenueType('vendas')}
-          >
-            Receitas de Vendas
-          </Button>
+    <>
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Análise DRE</h3>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={revenueType === 'total' ? 'default' : 'outline'}
+              onClick={() => setRevenueType('total')}
+            >
+              Receitas Totais
+            </Button>
+            <Button
+              size="sm"
+              variant={revenueType === 'vendas' ? 'default' : 'outline'}
+              onClick={() => setRevenueType('vendas')}
+            >
+              Receitas de Vendas
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <Tabs defaultValue="mensal">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="mensal">DRE Mensal</TabsTrigger>
-          <TabsTrigger value="anual">DRE Anual</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="mensal">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="mensal">DRE Mensal</TabsTrigger>
+            <TabsTrigger value="anual">DRE Anual</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="mensal">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Mês</th>
-                  <th className="text-right p-2">
-                    {revenueType === 'vendas' ? 'Receita de Vendas' : 'Receita Total'}
-                  </th>
-                  <th className="text-right p-2">Outras Entradas</th>
-                  <th className="text-right p-2">Despesas</th>
-                  <th className="text-right p-2">Lucro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyDRE.map((row) => (
-                  <tr key={row.month} className="border-b hover:bg-muted/50">
-                    <td className="p-2">{formatMonth(row.month)}</td>
-                    <td className="text-right p-2">{formatCurrency(revenueType === 'vendas' ? row.receitaVendas : row.receitaTotal)}</td>
-                    <td className="text-right p-2">{formatCurrency(row.outrasReceitas)}</td>
-                    <td className="text-right p-2 text-destructive">{formatCurrency(row.despesas)}</td>
-                    <td className={`text-right p-2 font-semibold ${row.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {formatCurrency(row.lucro)}
+          <TabsContent value="mensal">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Mês</th>
+                    <th className="text-right p-2">
+                      {revenueType === 'vendas' ? 'Receita de Vendas' : 'Receita Total'}
+                    </th>
+                    <th className="text-right p-2">Outras Entradas</th>
+                    <th className="text-right p-2">Despesas</th>
+                    <th className="text-right p-2">Lucro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyDRE.map((row) => (
+                    <tr key={row.month} className="border-b hover:bg-muted/50">
+                      <td className="p-2">{formatMonth(row.month)}</td>
+                      <td className="text-right p-2">{formatCurrency(revenueType === 'vendas' ? row.receitaVendas : row.receitaTotal)}</td>
+                      <td className="text-right p-2">{formatCurrency(row.outrasReceitas)}</td>
+                      <td className="text-right p-2 text-destructive">{formatCurrency(row.despesas)}</td>
+                      <td className={`text-right p-2 font-semibold ${row.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(row.lucro)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="font-bold border-t-2">
+                    <td className="p-2">Total</td>
+                    <td className="text-right p-2">
+                      {formatCurrency(monthlyDRE.reduce((sum, r) => sum + (revenueType === 'vendas' ? r.receitaVendas : r.receitaTotal), 0))}
+                    </td>
+                    <td className="text-right p-2">
+                      {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.outrasReceitas, 0))}
+                    </td>
+                    <td className="text-right p-2 text-destructive">
+                      {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.despesas, 0))}
+                    </td>
+                    <td className="text-right p-2">
+                      {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.lucro, 0))}
                     </td>
                   </tr>
-                ))}
-                <tr className="font-bold border-t-2">
-                  <td className="p-2">Total</td>
-                  <td className="text-right p-2">
-                    {formatCurrency(monthlyDRE.reduce((sum, r) => sum + (revenueType === 'vendas' ? r.receitaVendas : r.receitaTotal), 0))}
-                  </td>
-                  <td className="text-right p-2">
-                    {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.outrasReceitas, 0))}
-                  </td>
-                  <td className="text-right p-2 text-destructive">
-                    {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.despesas, 0))}
-                  </td>
-                  <td className="text-right p-2">
-                    {formatCurrency(monthlyDRE.reduce((sum, r) => sum + r.lucro, 0))}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
 
-        <TabsContent value="anual">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Categoria</th>
-                  {annualDRE.map(row => (
-                    <th key={row.year} className="text-right p-2">{row.year}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {/* RECEITAS */}
-                <tr className="border-b bg-muted/50">
-                  <td className="p-2 font-bold text-success">RECEITAS</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 font-bold text-success">
-                      {formatCurrency(revenueType === 'vendas' ? row.totalReceitasVendas : row.totalReceitas)}
-                    </td>
-                  ))}
-                </tr>
+          <TabsContent value="anual">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Categoria</th>
+                    {annualDRE.map(row => (
+                      <th key={row.year} className="text-right p-2">{row.year}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* RECEITAS */}
+                  <tr className="border-b bg-muted/50">
+                    <td className="p-2 font-bold text-success">RECEITAS</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 font-bold text-success">
+                        {formatCurrency(revenueType === 'vendas' ? row.totalReceitasVendas : row.totalReceitas)}
+                      </td>
+                    ))}
+                  </tr>
 
-                {annualDRE[0]?.receitas && Array.from(annualDRE[0].receitas.keys()).map((grupo: string) => {
-                  const grupoKey = `receitas_${grupo}`;
-                  const grupoLower = grupo.toLowerCase();
-                  
-                  // Se "Receitas de Vendas" estiver selecionado, mostrar apenas grupos de receita de vendas
-                  if (revenueType === 'vendas' && !(grupoLower.includes('receita') && grupoLower.includes('venda'))) {
-                    return null;
-                  }
-                  
-                  return (
-                    <>
-                      <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
-                        <td className="p-2 pl-6 text-sm flex items-center gap-2">
-                          {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          {grupo}
-                        </td>
-                        {annualDRE.map(row => {
-                          const subgrupoMap = row.receitas.get(grupo);
-                          const total = subgrupoMap 
-                            ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) 
-                            : 0;
-                          return (
-                            <td key={row.year} className="text-right p-2 text-sm text-success">
-                              {formatCurrency(total as number)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                      {expandedGroups[grupoKey] && annualDRE[0]?.receitas.get(grupo) && (
-                        Array.from(annualDRE[0].receitas.get(grupo)!.keys()).map((subgrupo: string) => (
-                          <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
-                            <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
-                            {annualDRE.map(row => {
-                              const subgrupoMap = row.receitas.get(grupo);
-                              const valor = (subgrupoMap?.get(subgrupo) || 0) as number;
-                              return (
-                                <td key={row.year} className="text-right p-2 text-xs text-success">
-                                  {formatCurrency(valor)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))
-                      )}
-                    </>
-                  );
-                })}
+                  {annualDRE[0]?.receitas && Array.from(annualDRE[0].receitas.keys()).map((grupo: string) => {
+                    const grupoKey = `receitas_${grupo}`;
+                    const grupoLower = grupo.toLowerCase();
+                    
+                    // Se "Receitas de Vendas" estiver selecionado, mostrar apenas grupos de receita de vendas
+                    if (revenueType === 'vendas' && !(grupoLower.includes('receita') && grupoLower.includes('venda'))) {
+                      return null;
+                    }
+                    
+                    return (
+                      <>
+                        <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                          <td className="p-2 pl-6 text-sm flex items-center gap-2">
+                            {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {grupo}
+                          </td>
+                          {annualDRE.map(row => {
+                            const subgrupoMap = row.receitas.get(grupo);
+                            const total = subgrupoMap 
+                              ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) 
+                              : 0;
+                            return (
+                              <td key={row.year} className="text-right p-2 text-sm text-success">
+                                {formatCurrency(total as number)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                        {expandedGroups[grupoKey] && annualDRE[0]?.receitas.get(grupo) && (
+                          Array.from(annualDRE[0].receitas.get(grupo)!.keys()).map((subgrupo: string) => (
+                            <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                              <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                              {annualDRE.map(row => {
+                                const subgrupoMap = row.receitas.get(grupo);
+                                const valor = (subgrupoMap?.get(subgrupo) || 0) as number;
+                                return (
+                                  <td key={row.year} className="text-right p-2 text-xs text-success">
+                                    {formatCurrency(valor)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))
+                        )}
+                      </>
+                    );
+                  })}
 
-                {/* DESPESAS */}
-                <tr className="border-b border-t-2 bg-muted/50 mt-4">
-                  <td className="p-2 font-bold text-destructive">DESPESAS</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className="text-right p-2 font-bold text-destructive">
-                      {formatCurrency(revenueType === 'vendas' ? row.totalDespesasOperacionais : row.totalDespesas)}
-                    </td>
-                  ))}
-                </tr>
+                  {/* DESPESAS */}
+                  <tr className="border-b border-t-2 bg-muted/50 mt-4">
+                    <td className="p-2 font-bold text-destructive">DESPESAS</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className="text-right p-2 font-bold text-destructive">
+                        {formatCurrency(revenueType === 'vendas' ? row.totalDespesasOperacionais : row.totalDespesas)}
+                      </td>
+                    ))}
+                  </tr>
 
-                {annualDRE[0]?.despesas && Array.from(annualDRE[0].despesas.keys()).map((grupo: string) => {
-                  const grupoKey = `despesas_${grupo}`;
-                  const grupoLower = grupo.toLowerCase();
-                  
-                  // Se "Receitas de Vendas" estiver selecionado, desconsiderar "SAIDA NÃO OPERACIONAL"
-                  if (revenueType === 'vendas' && grupoLower.includes('saida') && grupoLower.includes('não operacional')) {
-                    return null;
-                  }
-                  
-                  return (
-                    <>
-                      <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
-                        <td className="p-2 pl-6 text-sm flex items-center gap-2">
-                          {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          {grupo}
-                        </td>
-                        {annualDRE.map(row => {
-                          const subgrupoMap = row.despesas.get(grupo);
-                          const total = subgrupoMap 
-                            ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) 
-                            : 0;
-                          return (
-                            <td key={row.year} className="text-right p-2 text-sm text-destructive">
-                              {formatCurrency(total as number)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                      {expandedGroups[grupoKey] && annualDRE[0]?.despesas.get(grupo) && (
-                        Array.from(annualDRE[0].despesas.get(grupo)!.keys()).map((subgrupo: string) => (
-                          <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
-                            <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
-                            {annualDRE.map(row => {
-                              const subgrupoMap = row.despesas.get(grupo);
-                              const valor = (subgrupoMap?.get(subgrupo) || 0) as number;
-                              return (
-                                <td key={row.year} className="text-right p-2 text-xs text-destructive">
-                                  {formatCurrency(valor)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))
-                      )}
-                    </>
-                  );
-                })}
+                  {annualDRE[0]?.despesas && Array.from(annualDRE[0].despesas.keys()).map((grupo: string) => {
+                    const grupoKey = `despesas_${grupo}`;
+                    const grupoLower = grupo.toLowerCase();
+                    
+                    // Se "Receitas de Vendas" estiver selecionado, desconsiderar "SAIDA NÃO OPERACIONAL"
+                    if (revenueType === 'vendas' && grupoLower.includes('saida') && grupoLower.includes('não operacional')) {
+                      return null;
+                    }
+                    
+                    return (
+                      <>
+                        <tr key={grupo} className="hover:bg-muted/30 cursor-pointer" onClick={() => toggleGroup(grupoKey)}>
+                          <td className="p-2 pl-6 text-sm flex items-center gap-2">
+                            {expandedGroups[grupoKey] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {grupo}
+                          </td>
+                          {annualDRE.map(row => {
+                            const subgrupoMap = row.despesas.get(grupo);
+                            const total = subgrupoMap 
+                              ? Array.from(subgrupoMap.values()).reduce((s: number, v: number) => s + v, 0) 
+                              : 0;
+                            return (
+                              <td key={row.year} className="text-right p-2 text-sm text-destructive">
+                                {formatCurrency(total as number)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                        {expandedGroups[grupoKey] && annualDRE[0]?.despesas.get(grupo) && (
+                          Array.from(annualDRE[0].despesas.get(grupo)!.keys()).map((subgrupo: string) => (
+                            <tr key={`${grupo}_${subgrupo}`} className="hover:bg-muted/20">
+                              <td className="p-2 pl-12 text-xs text-muted-foreground">{subgrupo}</td>
+                              {annualDRE.map(row => {
+                                const subgrupoMap = row.despesas.get(grupo);
+                                const valor = (subgrupoMap?.get(subgrupo) || 0) as number;
+                                return (
+                                  <td key={row.year} className="text-right p-2 text-xs text-destructive">
+                                    {formatCurrency(valor)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))
+                        )}
+                      </>
+                    );
+                  })}
 
-                {/* LUCRO */}
-                <tr className="border-t-2 border-b-2 font-bold bg-muted/50">
-                  <td className="p-2">= LUCRO LÍQUIDO</td>
-                  {annualDRE.map(row => (
-                    <td key={row.year} className={`text-right p-2 ${row.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {formatCurrency(row.lucro)}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </Card>
+                  {/* LUCRO */}
+                  <tr className="border-t-2 border-b-2 font-bold bg-muted/50">
+                    <td className="p-2">= LUCRO LÍQUIDO</td>
+                    {annualDRE.map(row => (
+                      <td key={row.year} className={`text-right p-2 ${row.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(row.lucro)}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </Card>
+
+      <DRECharts 
+        monthlyDRE={monthlyDRE}
+        annualDRE={annualDRE}
+        revenueType={revenueType}
+      />
+    </>
   );
 };
