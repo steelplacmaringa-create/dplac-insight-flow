@@ -39,32 +39,57 @@ export const parseExcelFile = async (file: File): Promise<ProcessedData> => {
             parsedDate = new Date(dateValue);
           }
 
-          // Parse value - handle multiple column names and formats
+          // Parse value - handle multiple column names and number formats
           let valor = 0;
           const valorStr = String(
             row['R$'] || row['VALOR'] || row['valor'] || row['Valor'] || '0'
           );
           
-          // Clean the value string:
-          // - Remove currency symbols and spaces
-          // - Handle both comma as decimal (Brazilian) and dot as decimal (US)
+          // Remove currency symbols and spaces
           let cleanValue = valorStr.replace(/[R$\s]/g, '').trim();
-          
-          // Check if it uses comma as decimal separator (Brazilian format: 1.234,56)
-          if (cleanValue.includes(',')) {
-            // If there's both dot and comma, assume dot is thousands separator
-            if (cleanValue.includes('.')) {
-              cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
-            } else {
-              // Only comma present, it's the decimal separator
-              cleanValue = cleanValue.replace(',', '.');
+
+          // Detect and normalize thousands/decimal separators
+          const hasComma = cleanValue.includes(',');
+          const hasDot = cleanValue.includes('.');
+
+          if (hasComma || hasDot) {
+            const lastComma = cleanValue.lastIndexOf(',');
+            const lastDot = cleanValue.lastIndexOf('.');
+
+            let decimalSep: ',' | '.' | null = null;
+            if (lastComma === -1 && lastDot !== -1) {
+              decimalSep = '.'; // only dot present
+            } else if (lastDot === -1 && lastComma !== -1) {
+              decimalSep = ','; // only comma present
+            } else if (lastComma !== -1 && lastDot !== -1) {
+              // Both present: whichever is last is the decimal separator
+              decimalSep = lastComma > lastDot ? ',' : '.';
             }
+
+            if (decimalSep) {
+              const thousandsSep = decimalSep === '.' ? ',' : '.';
+              const thousandsRegex = new RegExp('\\' + thousandsSep, 'g');
+              // Remove thousands separator
+              cleanValue = cleanValue.replace(thousandsRegex, '');
+              // If decimal is comma, convert to dot for JS
+              if (decimalSep === ',') {
+                cleanValue = cleanValue.replace(',', '.');
+              }
+            }
+          }
+
+          // Fallback: if still only comma, treat it as decimal
+          if (!cleanValue.includes('.') && cleanValue.includes(',')) {
+            cleanValue = cleanValue.replace(',', '.');
           }
           
           valor = parseFloat(cleanValue) || 0;
 
           // Determine transaction type
-          const tipo = (row['Tipo'] || row['tipo'] || 'c').toLowerCase() as 'c' | 'd';
+          const tipoRaw = String(row['Tipo'] ?? row['tipo'] ?? 'c')
+            .trim()
+            .toLowerCase();
+          const tipo = (tipoRaw === 'd' ? 'd' : 'c') as 'c' | 'd';
           
           // Ensure correct sign: credits positive, debits negative
           const absoluteValue = Math.abs(valor);
