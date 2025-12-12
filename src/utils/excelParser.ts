@@ -39,15 +39,27 @@ export const parseExcelFile = async (file: File): Promise<ProcessedData> => {
             parsedDate = new Date(dateValue);
           }
 
-          // Parse value - handle Excel format (comma as thousands separator, dot as decimal)
+          // Parse value - handle multiple column names and formats
           let valor = 0;
-          const valorStr = String(row['VALOR'] || row['valor'] || '0');
+          const valorStr = String(
+            row['R$'] || row['VALOR'] || row['valor'] || row['Valor'] || '0'
+          );
           
-          // Remove currency symbols, spaces, and commas (thousands separator)
-          // Excel exports with comma as thousands separator and dot as decimal
-          const cleanValue = valorStr
-            .replace(/[R$\s]/g, '')
-            .replace(/,/g, ''); // Remove commas (thousands separator)
+          // Clean the value string:
+          // - Remove currency symbols and spaces
+          // - Handle both comma as decimal (Brazilian) and dot as decimal (US)
+          let cleanValue = valorStr.replace(/[R$\s]/g, '').trim();
+          
+          // Check if it uses comma as decimal separator (Brazilian format: 1.234,56)
+          if (cleanValue.includes(',')) {
+            // If there's both dot and comma, assume dot is thousands separator
+            if (cleanValue.includes('.')) {
+              cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+            } else {
+              // Only comma present, it's the decimal separator
+              cleanValue = cleanValue.replace(',', '.');
+            }
+          }
           
           valor = parseFloat(cleanValue) || 0;
 
