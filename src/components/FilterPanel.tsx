@@ -4,11 +4,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Filter, X, Calendar as CalendarIcon } from 'lucide-react';
 import { FilterState, ProcessedData } from '@/types/financial';
-import { format } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface FilterPanelProps {
   data: ProcessedData;
@@ -172,40 +174,86 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
             {/* Data */}
             <div>
               <Label className="mb-3 block">Período</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <CalendarIcon className="w-4 h-4 mr-2" />
-                      {tempFilters.startDate ? format(tempFilters.startDate, 'P', { locale: ptBR }) : 'Início'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={tempFilters.startDate || undefined}
-                      onSelect={(date) => setTempFilters({ ...tempFilters, startDate: date || null })}
-                      locale={ptBR}
+              <div className="space-y-3">
+                {/* Data Início */}
+                <div className="space-y-2">
+                  <span className="text-xs text-muted-foreground">Data Início</span>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="DD/MM/AAAA"
+                      value={tempFilters.startDate ? format(tempFilters.startDate, 'dd/MM/yyyy') : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length === 10) {
+                          const parsed = parse(value, 'dd/MM/yyyy', new Date());
+                          if (isValid(parsed)) {
+                            setTempFilters({ ...tempFilters, startDate: parsed });
+                          }
+                        } else if (value === '') {
+                          setTempFilters({ ...tempFilters, startDate: null });
+                        }
+                      }}
+                      className="flex-1 h-9"
                     />
-                  </PopoverContent>
-                </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+                          <CalendarIcon className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={tempFilters.startDate || undefined}
+                          onSelect={(date) => setTempFilters({ ...tempFilters, startDate: date || null })}
+                          locale={ptBR}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <CalendarIcon className="w-4 h-4 mr-2" />
-                      {tempFilters.endDate ? format(tempFilters.endDate, 'P', { locale: ptBR }) : 'Fim'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={tempFilters.endDate || undefined}
-                      onSelect={(date) => setTempFilters({ ...tempFilters, endDate: date || null })}
-                      locale={ptBR}
+                {/* Data Fim */}
+                <div className="space-y-2">
+                  <span className="text-xs text-muted-foreground">Data Fim</span>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="DD/MM/AAAA"
+                      value={tempFilters.endDate ? format(tempFilters.endDate, 'dd/MM/yyyy') : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length === 10) {
+                          const parsed = parse(value, 'dd/MM/yyyy', new Date());
+                          if (isValid(parsed)) {
+                            setTempFilters({ ...tempFilters, endDate: parsed });
+                          }
+                        } else if (value === '') {
+                          setTempFilters({ ...tempFilters, endDate: null });
+                        }
+                      }}
+                      className="flex-1 h-9"
                     />
-                  </PopoverContent>
-                </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+                          <CalendarIcon className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={tempFilters.endDate || undefined}
+                          onSelect={(date) => setTempFilters({ ...tempFilters, endDate: date || null })}
+                          locale={ptBR}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
               </div>
             </div>
 
