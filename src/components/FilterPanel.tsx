@@ -21,6 +21,8 @@ interface FilterPanelProps {
 export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
+  const [startDateText, setStartDateText] = useState(filters.startDate ? format(filters.startDate, 'dd/MM/yyyy') : '');
+  const [endDateText, setEndDateText] = useState(filters.endDate ? format(filters.endDate, 'dd/MM/yyyy') : '');
 
   const handleEmpresaToggle = (empresa: string) => {
     const newEmpresas = tempFilters.empresas.includes(empresa)
@@ -108,6 +110,8 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
         variant={hasActiveFilters ? "default" : "outline"}
         onClick={() => {
           setTempFilters(filters);
+          setStartDateText(filters.startDate ? format(filters.startDate, 'dd/MM/yyyy') : '');
+          setEndDateText(filters.endDate ? format(filters.endDate, 'dd/MM/yyyy') : '');
           setIsOpen(!isOpen);
         }}
         className="gap-2"
@@ -182,9 +186,10 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                     <Input
                       type="text"
                       placeholder="DD/MM/AAAA"
-                      value={tempFilters.startDate ? format(tempFilters.startDate, 'dd/MM/yyyy') : ''}
+                      value={startDateText}
                       onChange={(e) => {
                         const value = e.target.value;
+                        setStartDateText(value);
                         if (value.length === 10) {
                           const parsed = parse(value, 'dd/MM/yyyy', new Date());
                           if (isValid(parsed)) {
@@ -206,7 +211,10 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                         <Calendar
                           mode="single"
                           selected={tempFilters.startDate || undefined}
-                          onSelect={(date) => setTempFilters({ ...tempFilters, startDate: date || null })}
+                          onSelect={(date) => {
+                            setTempFilters({ ...tempFilters, startDate: date || null });
+                            setStartDateText(date ? format(date, 'dd/MM/yyyy') : '');
+                          }}
                           locale={ptBR}
                           className={cn("p-3 pointer-events-auto")}
                         />
@@ -222,9 +230,10 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                     <Input
                       type="text"
                       placeholder="DD/MM/AAAA"
-                      value={tempFilters.endDate ? format(tempFilters.endDate, 'dd/MM/yyyy') : ''}
+                      value={endDateText}
                       onChange={(e) => {
                         const value = e.target.value;
+                        setEndDateText(value);
                         if (value.length === 10) {
                           const parsed = parse(value, 'dd/MM/yyyy', new Date());
                           if (isValid(parsed)) {
@@ -246,7 +255,10 @@ export const FilterPanel = ({ data, filters, onFilterChange }: FilterPanelProps)
                         <Calendar
                           mode="single"
                           selected={tempFilters.endDate || undefined}
-                          onSelect={(date) => setTempFilters({ ...tempFilters, endDate: date || null })}
+                          onSelect={(date) => {
+                            setTempFilters({ ...tempFilters, endDate: date || null });
+                            setEndDateText(date ? format(date, 'dd/MM/yyyy') : '');
+                          }}
                           locale={ptBR}
                           className={cn("p-3 pointer-events-auto")}
                         />
